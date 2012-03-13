@@ -1,5 +1,33 @@
--module('mapper').
--export([track/3, print_maze/1]).
+-module(mapper).
+-export([home/0, explore/1, print_maze/1]).
+
+explore(Map) ->
+    receive
+        {start, From, Start, Goal} ->
+            {A1, A2, A3} = now(),
+            random:seed(A1, A2, A3),
+            case track(Map, Start, Goal) of
+                {ok, PathMap} -> From ! {ok, PathMap};
+                {failed, PathMap} -> From ! {failed, PathMap}
+            end;
+        {'EXIT', _} -> true
+    end.
+
+home() ->
+    Map = easy_maze:new(),
+    start(Map),
+    receive
+        {ok, PathMap} ->
+            io:format("Solution Found!~n"),
+            print_maze(PathMap);
+        {failed, _} ->
+            io:format("Attempt failed.~n"),
+            home()
+    end.
+
+start(Map) ->
+    Pid = spawn(fun () -> explore(Map) end),
+    Pid ! {start, self(), {21, 6}, {21, 20}}.
 
 
 print_row([]) -> io:format("~n");
@@ -46,13 +74,13 @@ neighbors_with_tile(Map, Cell, Tile) ->
     [A || A <- neighbors(Map, Cell), is_tile(Map, A, Tile)].
 
 
-track(Map, Cell, Goal) when Cell == Goal -> {success, Map};
+track(Map, Cell, Goal) when Cell == Goal -> {ok, Map};
 track(Map, Cell, Goal) ->
-    timer:sleep(1000),
+    timer:sleep(100),
     print_maze(Map),
     OpenNeighbors = neighbors_with_tile(Map, Cell, ' '),
     case length(OpenNeighbors) of
-        0 -> {failure, Map};
+        0 -> {failed, Map};
         _ ->
             RandomIndex = random:uniform(length(OpenNeighbors)),
             PickedNeighbor = lists:nth(RandomIndex, OpenNeighbors),
