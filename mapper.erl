@@ -1,5 +1,11 @@
 -module(mapper).
--export([home/0, explore/1, print_maze/1]).
+-export([solve/0, home/0, explore/1, print_maze/1]).
+
+
+solve() ->
+    Map = easy_maze:new(),
+    track(Map, {21, 6}, {21, 20}).
+
 
 explore(Map) ->
     receive
