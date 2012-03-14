@@ -1,5 +1,5 @@
 -module(mapper).
--export([solve/0, home/0, explore/1, print_maze/1]).
+-export([solve/0, home/1, explore/1, print_maze/1]).
 
 
 solve() ->
@@ -19,21 +19,31 @@ explore(Map) ->
         {'EXIT', _} -> true
     end.
 
-home() ->
+
+home(ProcessCount) ->
     Map = easy_maze:new(),
-    start(Map),
+    start(Map, ProcessCount),
+    listen(ProcessCount).
+
+
+listen(0) -> io:format('All processes responded.~n');
+listen(ProcessCount) ->
     receive
         {ok, PathMap} ->
             io:format("Solution Found!~n"),
             print_maze(PathMap);
         {failed, _} ->
             io:format("Attempt failed.~n"),
-            home()
+            listen(ProcessCount-1)
     end.
 
-start(Map) ->
-    Pid = spawn(fun () -> explore(Map) end),
-    Pid ! {start, self(), {21, 6}, {21, 20}}.
+start(Map, ProcessCount) ->
+    Go = fun () ->
+        Pid = spawn(fun () -> explore(Map) end),
+        Pid ! {start, self(), {21, 6}, {21, 20}},
+        io:format("Started process ~w~n", [Pid])
+    end,
+    [Go() || _ <- lists:seq(1, ProcessCount)].
 
 
 print_row([]) -> io:format("~n");
@@ -83,7 +93,7 @@ neighbors_with_tile(Map, Cell, Tile) ->
 track(Map, Cell, Goal) when Cell == Goal -> {ok, Map};
 track(Map, Cell, Goal) ->
     timer:sleep(100),
-    print_maze(Map),
+    %print_maze(Map),
     OpenNeighbors = neighbors_with_tile(Map, Cell, ' '),
     case length(OpenNeighbors) of
         0 -> {failed, Map};
